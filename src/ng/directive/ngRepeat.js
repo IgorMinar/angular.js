@@ -192,8 +192,9 @@ var ngRepeatDirective = ['$compile', function($compile) {
   transclude: 'element',
   priority: 1000,
   terminal: true,
-  compile: function($element, attr, linker) {
-    var NG_REPEAT_END_TAG_REGEXP = /^(?:<!--)?\s*\/(\S+)\s* (?:-->)?$/,
+    compile: function($element, attr, linker) {
+        var NG_REPEAT_END_TAG_REGEXP = /^(?:<!--)?\s*\/(\S+)\s* (?:-->)?$/,
+        NG_REPEAT_START_TAG_REGEXP =  /^(?:<!--)?\s*directive: (\S+)\s*.*?$/,
         element = $element[0],
         sibling = element.nextSibling,
         template, match;
@@ -202,17 +203,27 @@ var ngRepeatDirective = ['$compile', function($compile) {
     if (linker.$$originalNodeType === 8) {
 
       template = jqLite(document.createDocumentFragment());
-
+      var nestedRepeats = 0;
       // search for closing comment tag and create the template
+      
       while (sibling) {
-        if (sibling.nodeType == 8 &&
-            (match = (sibling.textContent || sibling.text).match(NG_REPEAT_END_TAG_REGEXP)) &&
-            directiveNormalize(match[1]) === 'ngRepeat')  {
-
-          jqLite(sibling).remove();
-          break;
+        if (sibling.nodeType == 8){
+          if( (match = (sibling.textContent || sibling.text).match(NG_REPEAT_START_TAG_REGEXP))
+            && ( directiveNormalize(match[1]) === 'ngRepeat')) {
+              nestedRepeats += 1;
+          }
+          else if( (match = (sibling.textContent || sibling.text).match(NG_REPEAT_END_TAG_REGEXP))
+            && ( directiveNormalize(match[1]) === 'ngRepeat')) {
+            if(nestedRepeats == 0){
+              jqLite(sibling).remove();
+              break;
+            }
+            else {
+              nestedRepeats--;
+            }
+          }
         }
-
+          
         element = sibling;
         sibling = sibling.nextSibling;
 
